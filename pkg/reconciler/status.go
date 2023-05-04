@@ -57,9 +57,11 @@ func (r *Reconciler) updateRepoRunStatus(ctx context.Context, logger *zap.Sugare
 	for i := 0; i < maxRun; i++ {
 		lastrepo, err := r.run.Clients.PipelineAsCode.PipelinesascodeV1alpha1().Repositories(
 			pr.GetNamespace()).Get(ctx, repo.Name, metav1.GetOptions{})
+		// todo does this error will be displayed?
 		if err != nil {
 			return err
 		}
+		logger = logger.With("name", lastrepo.Name, "action", "Update")
 
 		// Append PipelineRun status files to the repo status
 		if len(lastrepo.Status) >= maxPipelineRunStatusRun {

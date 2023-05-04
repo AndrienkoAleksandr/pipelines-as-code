@@ -13,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const FailedToUpdatePipilinerunMsg = "failed to update PipelineRun to in_progress: %w"
+
 func (r *Reconciler) queuePipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *tektonv1.PipelineRun) error {
 	order, exist := pr.GetAnnotations()[keys.ExecutionOrder]
 	if !exist {
@@ -31,6 +33,7 @@ func (r *Reconciler) queuePipelineRun(ctx context.Context, logger *zap.SugaredLo
 			}})
 			return nil
 		}
+		// todo log error ?
 		return fmt.Errorf("updateError: %w", err)
 	}
 
@@ -54,6 +57,7 @@ func (r *Reconciler) queuePipelineRun(ctx context.Context, logger *zap.SugaredLo
 		nsName := strings.Split(prKeys, "/")
 		pr, err = r.run.Clients.Tekton.TektonV1().PipelineRuns(nsName[0]).Get(ctx, nsName[1], metav1.GetOptions{})
 		if err != nil {
+			logger = logger.With("name", nsName[1], "action", "VIEW")
 			logger.Info("failed to get pr with namespace and name: ", nsName[0], nsName[1])
 			return err
 		}

@@ -186,6 +186,7 @@ func (l listener) handleEvent(ctx context.Context) http.HandlerFunc {
 		localRequest := request.Clone(request.Context())
 
 		go func() {
+			// stopped here
 			err := s.processEvent(ctx, localRequest)
 			if err != nil {
 				logger.Errorf("an error occurred: %v", err)

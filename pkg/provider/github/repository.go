@@ -43,6 +43,21 @@ func ConfigureRepository(ctx context.Context, run *params.Run, req *http.Request
 	}
 
 	logger.Infof("github: configuring repository cr for repo: %v", repoEvent.Repo.GetHTMLURL())
+	repoNsName, err := generateNamespaceName(run.Info.Pac.AutoConfigureRepoNamespaceTemplate, repoEvent)
+	if err != nil {
+		logger.Errorf("failed to generate namespace for repo: %w", err)
+		return true, true, err
+	}
+	logger.Info("github: generated namespace name: ", repoNsName)
+
+	logger = logger.With("namespace", repoNsName).With("action", "ADD")
+
+	if err := createRepoNamespace(ctx, repoNsName, run.Clients, logger); err != nil {
+		logger.Errorf("failed to create namespace for repository %s: %v", repoNsName, err)
+		return true, true, err
+	}
+	logger = logger.With("name", repoNsName)
+
 	if err := createRepository(ctx, run.Info.Pac.AutoConfigureRepoNamespaceTemplate, run.Clients, repoEvent, logger); err != nil {
 		logger.Errorf("failed repository creation: %v", err)
 		return true, true, err
@@ -51,31 +66,28 @@ func ConfigureRepository(ctx context.Context, run *params.Run, req *http.Request
 	return true, true, nil
 }
 
-func createRepository(ctx context.Context, nsTemplate string, clients clients.Clients, gitEvent *github.RepositoryEvent, logger *zap.SugaredLogger) error {
-	repoNsName, err := generateNamespaceName(nsTemplate, gitEvent)
-	if err != nil {
-		return fmt.Errorf("failed to generate namespace for repo: %w", err)
-	}
-
-	logger.Info("github: generated namespace name: ", repoNsName)
-
+func createRepoNamespace(ctx context.Context, nsName string, clients clients.Clients, logger *zap.SugaredLogger) error {
 	// create namespace
 	repoNs := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: repoNsName,
+			Name: nsName,
 		},
 	}
-	repoNs, err = clients.Kube.CoreV1().Namespaces().Create(ctx, repoNs, metav1.CreateOptions{})
+
+	repoNs, err := clients.Kube.CoreV1().Namespaces().Create(ctx, repoNs, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create namespace %v: %w", repoNs.Name, err)
 	}
 
 	if errors.IsAlreadyExists(err) {
-		logger.Infof("github: namespace %v already exists, creating repository", repoNsName)
+		logger.Infof("github: namespace %v already exists", nsName)
 	} else {
 		logger.Info("github: created repository namespace: ", repoNs.Name)
 	}
+	return nil
+}
 
+func createRepository(ctx context.Context, repoNsName string, clients clients.Clients, gitEvent *github.RepositoryEvent, logger *zap.SugaredLogger) error {
 	// create repository
 	repo := &v1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{
@@ -86,11 +98,11 @@ func createRepository(ctx context.Context, nsTemplate string, clients clients.Cl
 			URL: gitEvent.Repo.GetHTMLURL(),
 		},
 	}
-	repo, err = clients.PipelineAsCode.PipelinesascodeV1alpha1().Repositories(repoNsName).Create(ctx, repo, metav1.CreateOptions{})
+	repo, err := clients.PipelineAsCode.PipelinesascodeV1alpha1().Repositories(repoNsName).Create(ctx, repo, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create repository for repo: %v: %w", gitEvent.Repo.GetHTMLURL(), err)
 	}
-	logger = logger.With("namespace", repo.Namespace)
+
 	logger.Infof("github: repository created: %s/%s ", repo.Namespace, repo.Name)
 	return nil
 }

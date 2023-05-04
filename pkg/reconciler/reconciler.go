@@ -72,9 +72,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, pr *tektonv1.PipelineRun
 
 	logger = logger.With(
 		"pipeline-run", pr.GetName(),
+		//
 		"event-sha", pr.GetAnnotations()[keys.SHA],
 	)
-	logger.Infof("pipelineRun %v/%v is done, reconciling to report status!  ", pr.GetNamespace(), pr.GetName())
+	logger.Info("pipelineRun is done, reconciling to report status!")
 	r.eventEmitter.SetLogger(logger)
 
 	detectedProvider, event, err := r.detectProvider(ctx, logger, pr)

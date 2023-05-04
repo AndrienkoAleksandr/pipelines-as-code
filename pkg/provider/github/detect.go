@@ -38,6 +38,7 @@ func (v *Provider) Detect(req *http.Request, payload string, logger *zap.Sugared
 		return setLoggerAndProceed(false, "", err)
 	}
 
+	//
 	_ = json.Unmarshal([]byte(payload), &eventInt)
 
 	switch gitEvent := eventInt.(type) {

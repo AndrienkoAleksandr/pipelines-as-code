@@ -102,6 +102,7 @@ func (p *PacRun) Run(ctx context.Context) error {
 				defer wg.Done()
 				if _, err := action.PatchPipelineRun(ctx, p.logger, "execution order", p.run.Clients.Tekton, &pr, getExecutionOrderPatch(order)); err != nil {
 					errMsg := fmt.Sprintf("Failed to patch pipelineruns %s execution order: %s", pr.GetGenerateName(), err.Error())
+					// do nothing here
 					p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryPipelineRun", errMsg)
 					return
 				}
@@ -131,6 +132,8 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 		if err = p.k8int.CreateSecret(ctx, match.Repo.GetNamespace(), authSecret); err != nil {
 			return nil, fmt.Errorf("creating basic auth secret: %s has failed: %w ", authSecret.GetName(), err)
 		}
+		p.logger.With("name", authSecret.GetName(), "action", "ADD").
+			Debugf("basic auth secret %s successfully created.", authSecret.GetName())
 	}
 
 	// Add labels and annotations to pipelinerun
@@ -156,8 +159,9 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 	}
 
 	// Create status with the log url
-	p.logger.Infof("pipelinerun %s has been created in namespace %s for SHA: %s Target Branch: %s",
-		pr.GetName(), match.Repo.GetNamespace(), p.event.SHA, p.event.BaseBranch)
+	p.logger.With("name", match.PipelineRun, "action", "ADD").
+		Infof("pipelinerun %s has been created in namespace %s for SHA: %s Target Branch: %s",
+			pr.GetName(), match.Repo.GetNamespace(), p.event.SHA, p.event.BaseBranch)
 	consoleURL := p.run.Clients.ConsoleUI.DetailURL(pr)
 	// Create status with the log url
 	msg := fmt.Sprintf(params.StartingPipelineRunText,

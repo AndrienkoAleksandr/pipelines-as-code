@@ -45,7 +45,8 @@ func GetStatusFromTaskStatusOrFromAsking(ctx context.Context, pr *tektonv1.Pipel
 			ctx, run.Clients.Tekton, pr.GetNamespace(), cr,
 		)
 		if err != nil {
-			run.Clients.Log.Warnf("cannot get taskrun status pr %s ns: %s err: %w", pr.GetName(), pr.GetNamespace(), err)
+			logger := run.Clients.Log.With("name", pr.GetName(), "action", "VIEW")
+			logger.Warnf("cannot get taskrun status pr %s ns: %s err: %w", pr.GetName(), pr.GetNamespace(), err)
 			continue
 		}
 		trStatus[cr.Name] = &tektonv1.PipelineRunTaskRunStatus{

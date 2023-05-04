@@ -38,7 +38,8 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 		c := make(chan struct{})
 		go func() {
 			c <- struct{}{}
-			if err := run.WatchConfigMapChanges(ctx); err != nil {
+			// do nothing
+			if err := run.WatchConfigMapChanges(ctx); err != nil { // do nothing here
 				log.Fatal("error from WatchConfigMapChanges from watcher reconciler : ", err)
 			}
 		}()
@@ -46,7 +47,7 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 
 		pipelineRunInformer := tektonPipelineRunInformerv1.Get(ctx)
 
-		metrics, err := metrics.NewRecorder()
+		metrics, err := metrics.NewRecorder() // do nothing here
 		if err != nil {
 			log.Fatalf("Failed to create pipeline as code metrics recorder %v", err)
 		}
@@ -60,12 +61,15 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 			metrics:           metrics,
 			eventEmitter:      events.NewEventEmitter(run.Clients.Kube, run.Clients.Log),
 		}
+		// do nothing, because that's tekton pipelinerun reconsiler
 		impl := tektonPipelineRunReconcilerv1.NewImpl(ctx, r, ctrlOpts())
 
+		// do nothing, but yah in the method we really VIEV resources, but we don't log this info directly.
 		if err := r.qm.InitQueues(ctx, run.Clients.Tekton, run.Clients.PipelineAsCode); err != nil {
 			log.Fatal("failed to init queues", err)
 		}
 
+		// do nothing here
 		pipelineRunInformer.Informer().AddEventHandler(controller.HandleAll(checkStateAndEnqueue(impl)))
 
 		return impl

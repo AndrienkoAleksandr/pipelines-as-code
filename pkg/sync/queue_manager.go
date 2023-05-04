@@ -135,7 +135,6 @@ func getQueueKey(run *tektonv1.PipelineRun) string {
 // InitQueues rebuild all the queues for all repository if concurrency is defined before
 // reconciler started reconciling them
 func (qm *QueueManager) InitQueues(ctx context.Context, tekton versioned2.Interface, pac versioned.Interface) error {
-	// fetch all repos
 	repos, err := pac.PipelinesascodeV1alpha1().Repositories("").List(ctx, v1.ListOptions{})
 	if err != nil {
 		return err
@@ -171,11 +170,12 @@ func (qm *QueueManager) InitQueues(ctx context.Context, tekton versioned2.Interf
 			orderedList := strings.Split(order, ",")
 			_, err = qm.AddListToQueue(&repo, orderedList)
 			if err != nil {
-				qm.logger.Error("failed to init queue for repo: ", repo.GetName())
+				qm.logger.Error("failed to init queue for repo: ", repo.GetName(), "namespace", repo.Namespace)
 			}
 		}
 
 		// now fetch all queued pipelineRun
+		// todo view
 		prs, err = tekton.TektonV1().PipelineRuns(repo.Namespace).
 			List(ctx, v1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s", keys.State, kubeinteraction.StateQueued),
